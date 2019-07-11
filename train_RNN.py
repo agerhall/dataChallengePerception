@@ -7,9 +7,12 @@ Created on Wed Jul 10 15:19:50 2019
 import numpy as np
 import pandas as pd
 import keras
+import os
 from keras.layers import LSTM, TimeDistributed, Dense, Dropout, Activation
 from keras.models import Sequential
-keras
+from sklearn.metrics import confusion_matrix
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+
 
 def model_arch(nr_of_classes, input_shape):
     model = Sequential()
@@ -110,24 +113,62 @@ def get_data(time_steps, nr_of_features, split_frac, path):
 
     return train_seq_x, train_seq_y, val_seq_x, val_seq_y
     
+def save_results(path, pred):
+    data = pd.read_csv(path + "groundTruth.txt", header=None, sep=' ')
+    data = data.iloc[:len(pred),:]
+    data.iloc[:,2] = pred
+    data.to_csv(path + "predictions.txt", header=None, index=None, sep=' ', mode='a')
     
 
 if __name__ == "__main__":
     nr_of_features = 42
-    time_steps = 50
+    time_steps = 75
     split_frac = 0.9 # 90% training data
     
     data_path = r'C:\Users\sebbe\OneDrive\Dokument\GitHub\dataChallengePerception\sound_data_meancov\complete_data.csv'
     x_train, y_train, x_val, y_val = get_data(time_steps, nr_of_features, split_frac, data_path)
-
-    epochs  = 50
+    
+    
+    epochs  = 100
     batch_size = 64
     input_shape = (time_steps, nr_of_features)
     
-    callbacks = []
+    early_stopping = EarlyStopping(monitor='val_loss', patience=15, verbose=0, mode='min', restore_best_weights=True)
+    reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, epsilon=1e-4, mode='min')
+    
+    callbacks = [early_stopping, reduce_lr_loss]
     model = model_arch(nr_of_classes = 2, input_shape = input_shape)
     model.fit(x_train, y_train, epochs=epochs, batch_size = batch_size, 
               validation_data = (x_val, y_val), callbacks = callbacks, verbose = 1)
     
     pred = model.predict(x_val)
-    print(pred.shape)
+    pred_labels = np.argmax(pred, axis = 2).reshape((pred.shape[0]*time_steps,1))
+    y_true = np.argmax(y_val, axis = 2).reshape((pred.shape[0]*time_steps,1))
+    print(pred_labels.shape)
+    cm = confusion_matrix(y_true,pred_labels)
+    print(cm)
+    spr = float(cm[0,0]*cm[1,1]-cm[0,1]*cm[1,0])**2/(cm[0,0]**2+cm[0,1]**2)/(cm[1,0]**2+cm[1,1]**2)
+        
+    print("sin",spr**.5)
+    
+
+    test_dir = "C:\\Users\\sebbe\\OneDrive\\Dokument\\GitHub\\dataChallengeTest\\"
+    for dir_ in next(iter(os.walk(test_dir)))[1]: 
+        for file_name in os.listdir(test_dir+ dir_):
+            if file_name.endswith('.csv'):
+                test_file_name = file_name
+                print("Predicting on file: {}".format(file_name))
+                x_test, y_test, _, _ = get_data(time_steps, nr_of_features, 1, test_dir + dir_+ "\\"+ test_file_name)
+                pred = model.predict(x_test)
+                pred_labels = np.argmax(pred, axis = 2).reshape((pred.shape[0]*time_steps,1))
+                save_results(test_dir + dir_+ "\\", pred_labels)
+                y_true = np.argmax(y_test, axis = 2).reshape((pred.shape[0]*time_steps,1))
+                print(pred_labels.shape)
+                cm = confusion_matrix(y_true,pred_labels)
+                print(cm)
+                spr = float(cm[0,0]*cm[1,1]-cm[0,1]*cm[1,0])**2/(cm[0,0]**2+cm[0,1]**2)/(cm[1,0]**2+cm[1,1]**2)
+            
+                print("sin",spr**.5)
+            
+
+    
