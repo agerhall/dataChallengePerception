@@ -128,3 +128,6 @@ if __name__ == "__main__":
     model = model_arch(nr_of_classes = 2, input_shape = input_shape)
     model.fit(x_train, y_train, epochs=epochs, batch_size = batch_size, 
               validation_data = (x_val, y_val), callbacks = callbacks, verbose = 1)
+    
+    pred = model.predict(x_val)
+    print(pred.shape)
