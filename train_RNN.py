@@ -114,15 +114,15 @@ def get_data(time_steps, nr_of_features, split_frac, path):
 
 if __name__ == "__main__":
     nr_of_features = 42
-    time_steps = 100
+    time_steps = 50
     split_frac = 0.9 # 90% training data
     
-    data_path = r'C:\Users\sebbe\OneDrive\Dokument\GitHub\dataChallengePerception\test.csv'
+    data_path = r'C:\Users\sebbe\OneDrive\Dokument\GitHub\dataChallengePerception\sound_data_meancov\complete_data.csv'
     x_train, y_train, x_val, y_val = get_data(time_steps, nr_of_features, split_frac, data_path)
 
     epochs  = 50
     batch_size = 64
-    input_shape = (100, 42)
+    input_shape = (time_steps, nr_of_features)
     
     callbacks = []
     model = model_arch(nr_of_classes = 2, input_shape = input_shape)
