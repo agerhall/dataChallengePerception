@@ -17,7 +17,7 @@ from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 def model_arch(nr_of_classes, input_shape):
     model = Sequential()
     model.add(LSTM(units = 100, return_sequences = True, recurrent_dropout = 0.5 ,input_shape = input_shape))
-    model.add(LSTM(units = 100, return_sequences = True, recurrent_dropout = 0.75))
+    model.add(LSTM(units = 100, return_sequences = True, recurrent_dropout = 0.5))
     model.add(Dropout(0.5))
     model.add(TimeDistributed(Dense(nr_of_classes)))
     model.add(Activation('softmax'))
@@ -51,13 +51,18 @@ def split_sequences(X_data, y_data, time_steps):
     
     X, y = list(), list()
     start_idx=0
-    for i in range(len(X_data)):
+    for i in range(len(X_data)+1):
         # find the end of this pattern
         end_idx = int(start_idx + time_steps)
 
-        
         # check if we are beyond the dataset
+        if start_idx > len(X_data):
+            break
+            
+        
         if end_idx > len(X_data):
+            X.append(np.asarray(X_data.iloc[start_idx:, :]))
+            y.append(np.asarray(y_data.iloc[start_idx:]))
             break
         # gather input and output parts of the pattern
         seq_x = np.asarray(X_data.iloc[start_idx:end_idx, :])
@@ -79,7 +84,10 @@ def split_sequences(X_data, y_data, time_steps):
     X_array = np.empty((len(X),X[0].shape[0],X[0].shape[1]))
     y_array = np.empty((len(X),X[0].shape[0],2))
     for i, (elx, ely) in enumerate(zip(X,y)):
-        X_array[i,:,:] = elx
+        if len(elx)!=time_steps:
+            X_array[i,:len(elx),:] = elx
+        else:
+            X_array[i,:,:] = elx
         for j in range(len(ely)):
             y_array[i,j,0] = int(1>np.asarray(ely)[j])
         
@@ -113,11 +121,15 @@ def get_data(time_steps, nr_of_features, split_frac, path):
 
     return train_seq_x, train_seq_y, val_seq_x, val_seq_y
     
-def save_results(path, pred):
+def save_results(path, pred, id_s):
     data = pd.read_csv(path + "groundTruth.txt", header=None, sep=' ')
-    data = data.iloc[:len(pred),:]
-    data.iloc[:,2] = pred
-    data.to_csv(path + "predictions.txt", header=None, index=None, sep=' ', mode='a')
+    min_idx = np.amin((len(data),len(pred)))
+    id_s.iloc[:min_idx]
+    data = data.iloc[:min_idx,:]
+    pred = pred[:min_idx,:]
+    data.iloc[:,2] = pred.astype(int)
+    data.iloc[:,1] = id_s.astype(int)
+    data.to_csv(path + "predictions.txt", header=None, index=None, sep=' ', mode='w')
     
 
 if __name__ == "__main__":
@@ -158,10 +170,12 @@ if __name__ == "__main__":
             if file_name.endswith('.csv'):
                 test_file_name = file_name
                 print("Predicting on file: {}".format(file_name))
+                test_data = pd.read_csv(test_dir + dir_+ "\\"+ test_file_name)
+                id_s= test_data.iloc[:,2]
                 x_test, y_test, _, _ = get_data(time_steps, nr_of_features, 1, test_dir + dir_+ "\\"+ test_file_name)
                 pred = model.predict(x_test)
                 pred_labels = np.argmax(pred, axis = 2).reshape((pred.shape[0]*time_steps,1))
-                save_results(test_dir + dir_+ "\\", pred_labels)
+                save_results(test_dir + dir_+ "\\", pred_labels,id_s)
                 y_true = np.argmax(y_test, axis = 2).reshape((pred.shape[0]*time_steps,1))
                 print(pred_labels.shape)
                 cm = confusion_matrix(y_true,pred_labels)
