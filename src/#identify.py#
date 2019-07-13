@@ -1,0 +1,104 @@
+import pandas as pd
+import numpy as np
+
+def load_data(foldername):
+    dataroot = "../../../dataChallenge"
+    filename = "groundTruth.txt"
+    data = pd.read_csv(dataroot + '/' + foldername + '/' + filename, sep=" ", header=None)
+    return data.values
+
+def by_frame(data):
+    maxframe = data[:,0].max()
+    return [data[data[:,0] == i] for i in range(maxframe + 1)]
+
+def by_person(data):
+    maxid = data[:,1].max()
+    return [data[data[:,1] == i] for i in range(maxid + 1)]
+
+fn = 'Scenario03-01'
+
+'''
+
+"""import pandas as pd
+from hmmlearn.hmm import GaussianHMM
+import numpy as np
+from sklearn.metrics import confusion_matrix
+import itertools
+import random
+import os
+"""
+
+
+print(len(data))
+data
+
+
+def devide_into_frames(data):
+    frames = []
+    frame_count = data.iloc[:, 0].max()
+    for i in xrange(frame_count):
+        frames.append(data[data.iloc[:, 0] == i + 1])
+    return frames
+
+
+frames = devide_into_frames(data)
+print("length: {}".format(len(frames) - 1))
+# print(frames[10])
+
+def unpanda(a):
+    return a.values.tolist()
+
+
+def identify_people(frames):
+    hist = []
+    prev = [None, None, None]
+    for i, frame in enumerate(frames):
+        if len(frame) != 3:
+            hist.append(None)
+            continue
+
+        def dist(A, B):
+            if A is None or B is None: return np.inf
+            A, B = unpanda(A)[3:], unpanda(B)[3:]
+            s = 0.0
+            n = 0
+            for Ai, Bi in zip(A, B):
+                if Ai == -1 or Bi == -1:
+                    continue
+                s += (Ai - Bi) ** 2
+                n += 1
+            return s / n if n != 0 else np.inf
+            # return np.linalg.norm((A-B)[1:])
+
+        def score(perm):
+            now = [frame.iloc[i] for i in perm]
+            return sum(dist(previ, nowi) for previ, nowi in zip(prev, now))
+
+        tmp = [score(i) for i in itertools.permutations(range(3))]
+        print(tmp)
+
+        perm = min(itertools.permutations(range(3)), key=score)
+        hist.append(perm)
+        prev = [frame.iloc[i] for i in range(3)]
+        print(type(frame))
+    return hist
+
+
+ret = identify_people(frames)
+
+out = []
+for frame, perm in zip(frames, ret):
+    if len(frame) != 3:
+        continue
+    l0, l1, l2 = [frame.iloc[i].values.tolist() for i in perm]
+    l0[1], l1[1], l2[1] = 0, 1, 2
+    l0[2], l1[2], l2[2] = 1, 1, 1
+    out.extend([l0, l1, l2])
+#out
+len(out)
+
+outstr = '\n'.join(' '.join(str(j) for j in i) for i in out)
+open('../../dataChallenge/Scenario03-01/potentialTruthE36.txt', 'w').write(outstr)
+
+
+'''
